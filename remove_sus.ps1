@@ -7,6 +7,7 @@
 #                    2. Powershell for MAC: https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-core-on-macos?view=powershell-7.1
 #                    3. To run a PS script on mac: pwsh -File [filename]
 #                    4. Uses: https://1password.com/downloads/command-line/
+#                    5. You MUST log into 1password via command PRIOR to running this script
 # Revision:          April 9, 2021
 # ===================================================================
 #
