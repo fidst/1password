@@ -48,6 +48,40 @@ function checkUser ($t) {
   }
 }
 
+# Functions to find txt file of people to skip
+# import ignore txt file. This is a seperate function to allow a file check later on
+Function getTXT()
+{
+  # Checks if this is a test
+  If ($runTest -eq 1)
+  {
+    # This is a test, so let the user know and use test.txt
+    write-host "THIS IS A TEST - Using test.txt."
+    $Global:1pfile = ".\test.txt"
+      } else {
+    # This is NOT a test, so let the user know and use ignore.txt
+    write-host "THIS IS NOT A TEST - Using ignore.txt"
+    $Global:1pfile = ".\ignore.txt"
+  }
+}
+
+function processText(){
+# get the ignore file
+  getTXT
+  # Import the ignore file as an array
+    [string[]]$Global:ignoreArray = Get-Content -Path $1pfile
+  # Sets the process for ignoring to true
+    $Global:ignoreUsers="TRUE"
+  # Displays the ignored users and pauses for dramatic effect
+  If (@($ignoreArray).Count -eq 0)
+  {
+    $ignoreArray
+    sleepy
+  }
+}
+
+
+function createLOG(){
 # log all names to document
 # create blank logging csv
     # Name of the log csv (based on the title and date variables)
@@ -57,11 +91,12 @@ function checkUser ($t) {
     # Tells the user that the log csv is being made
     write-host "Creating new log CSV: $1pImportFile"
     # The headers in the log csv (MUST match the array made later on)
-    Set-Content $1pImportFile -Value "Email,State,NeedRemoval,ConfirmRemoval"
+    Set-Content $1pImportFile -Value "Email,State,NeedRemoval,Ignored,ConfirmRemoval"
     sleepy
     next_line
+}
 
-
+function processUsers(){
 # Loops through each property in the user object (each user reported)
 foreach ($user in $1pusers)
 {
@@ -71,6 +106,7 @@ foreach ($user in $1pusers)
 $nP = [math]::Round(($n/$1pcount)*100,2)
 # Shows the count and the math for each loop so you know how long you have to get coffee
 write-host "$n/$1pcount ($nP%)"
+next_line
 # Adds 1 to the loop variable to let the math continue each loop
 $n++
 
@@ -82,6 +118,7 @@ $n++
   Email=""
   State=""
   NeedRemoval=""
+  Ignored=""
   ConfirmRemoval=""
   }
 
@@ -99,14 +136,55 @@ $n++
 # If a test, output this is a test, and the email for visual representation
       If ($runTest -eq 1)
       {
-    write-host "THIS IS A TEST - DELETING $useremail"
+
+          write-host "THIS IS A TEST -  (Deletion process) $useremail"
+        If ($ignoreUsers="TRUE")
+        {
+          # if in array, ignore
+          If (@($ignoreArray).Count -ne 0)
+          {
+          If ($ignoreArray.Contains($useremail))
+          {
+            $logFileO.Ignored="TRUET"
+            write-host "THIS IS A TEST -  IGNORING $useremail"
+          }else{
+          $logFileO.Ignored="FALSE"
+          write-host "THIS IS A TEST -  NOT IGNORING $useremail"
+        }
+      }else{
+        $logFileO.Ignored="FALSE"
+        write-host "THIS IS A TEST -  NOT IGNORING $useremail"
+      }
+      }
+
       }else{
 # If not a test, do the deed of deletion
-        op delete user $useremail
-      }
+
+If ($ignoreUsers="TRUE")
+{
+  If (@($ignoreArray).Count -ne 0)
+  {
+  # if in array, ignore
+  If ($ignoreArray.Contains($useremail))
+  {
+  $logFileO.Ignored="TRUE"
+  write-host "Ignoring the user."
+  }else{
+    $logFileO.Ignored="FALSE"
+    op delete user $useremail
+  }
+}else{
+  $logFileO.Ignored="FALSE"
+  op delete user $useremail
+}
+
+}
+}
+
 # If not suspended, no action needed, log they are not suspended and move along
   }else{
-      $logFileO.NeedRemoval      = "FALSE"
+    $logFileO.Ignored     ="TRUE"
+    $logFileO.NeedRemoval = "FALSE"
   }
 
   # Confirm user deletion
@@ -140,5 +218,48 @@ write-host "----------"
 next_line
 }
 
+
+}
+
+# Outputs all information for the user (based on the log array)
+  $logFileO
+# Outputs the log array to the csv
+  $logFileO | Export-CSV $1pImportFile -Append -NoTypeInformation -Force
+
 # end forloop
+}
+
+
+
+
+
+# --------
+
+getTXT
+
+if (Test-Path $1pfile -PathType leaf)
+{
+  If ($runTest -eq 1)
+  {
+processText
+createLOG
+processUsers
+}else{
+  Write-Warning "This is not a test, do you wish to run?"
+  $askRun = Read-Host -Prompt '(y/n) '
+  if($askRun -eq "y")
+  {
+    processText
+    createLOG
+    processUsers
+  }else{
+    Write-host "Ending."
+  }
+}
+}else{
+  next_line
+  write-host "No ignore txt file, not actioning deletions."
+  write-host "Create a TXT file in the same directory as the script"
+  write-host "If a test, use test.txt. If prod, use ignore.txt"
+  next_line
 }
