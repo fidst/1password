@@ -8,7 +8,7 @@
 #                    3. To run a PS script on mac: pwsh -File [filename]
 #                    4. Uses: https://1password.com/downloads/command-line/
 #                    5. You MUST log into 1password via command PRIOR to running this script
-# Revision:          April 9, 2021
+# Revision:          April 12, 2021
 # ===================================================================
 #
 
@@ -29,7 +29,7 @@ $1pcount = $1pusers.count
 # Sets count to 1 for the loop later on
 $n=1
 # 0= not test
-$runTest = 1
+$runTest = 0
 
 
 # function called later to check if user is in 1pass
@@ -37,9 +37,10 @@ function checkUser ($t) {
   # Gets a fresh list of the users in 1p
   $lUsers = op list users | ConvertFrom-Json
   # Checks in the fresh user list if the username is in it
-  $lUsers | Where-Object {$_.email -eq $t} | Out-Null
+
+  $clUsers = $lUsers | Where-Object {$_.email -eq $t}
   # Returns t/f
-  if ($lUsers -eq $null) {
+  if ($clUsers -eq $null) {
     # If not in 1Pass return False
     return "FALSE"
   } else {
@@ -179,12 +180,13 @@ If ($ignoreUsers="TRUE")
 }
 
 }
+
 }
 
 # If not suspended, no action needed, log they are not suspended and move along
   }else{
-    $logFileO.Ignored     ="TRUE"
     $logFileO.NeedRemoval = "FALSE"
+    $logFileO.Ignored     = "TRUE"
   }
 
   # Confirm user deletion
@@ -197,7 +199,7 @@ write-host "THIS IS A TEST -  USER NOT DELETED"
   }else{
 # If not a test, we will check a freshly made user list for the email and report back using the function above
 # We check EVERY user as a precaution
-  $1passCheck = checkUSer $useremail # Check if user exists in 1pass
+  $1passCheck = checkUser $useremail # Check if user exists in 1pass
   if ($1passCheck -eq "FALSE") {
 # If the user IS NOT found, it is returned as false, and logged as REMOVED
   $logFileO.ConfirmRemoval="REMOVED"
